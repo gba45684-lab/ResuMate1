@@ -1,14 +1,13 @@
 {
   "name": "resumate-apk",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "ResuMate copyright-safe intelligent resume builder",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "mkdir -p dist && cp -r www/* dist/",
+    "android:sync": "npx cap sync android",
+    "android:debug": "npx cap sync android && cd android && ./gradlew assembleDebug"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.5.1",
