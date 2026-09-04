@@ -1,88 +1,95 @@
-# ResuMate — Android APK build
+# ResuMate — Intelligent Resume Builder
 
-This folder is a real [Capacitor](https://capacitorjs.com) project: it wraps
-`www/index.html` (the ResuMate app) in a native Android WebView shell so it
-can be built into an installable `.apk`.
+ResuMate is a lightweight, copyright-safe resume builder packaged as an Android app with Capacitor. The current rebuild focuses on a polished mobile-first experience, local persistence, original templates, live preview, ATS analysis, writing assistance, backup and export.
 
-Claude's sandbox can reach npm, but **not** Gradle's or Google's servers
-(`services.gradle.org`, `dl.google.com`), so the actual compile has to
-happen somewhere with normal internet access — GitHub's own servers, or
-your Codespace. Everything up to that point (the full Android project,
-Gradle wrapper, manifest, icons) is already generated and included here.
+## Features
 
-## Option A — GitHub Actions (easiest, no terminal needed)
+- Dashboard with multiple saved resumes
+- Create, edit, duplicate, rename and delete resumes
+- Eight original templates: Atlas, Clarity, Vertex, Minimal, Nova, Career, Summit and Orbit
+- Central resume data model with autosave
+- Personal information, summary, experience, education, skills, projects, certifications, languages and achievements
+- Add/delete/reorder repeated entries
+- Section reordering that affects preview and print output
+- Live A4 preview with zoom controls
+- Design Studio: templates, accent themes, fonts, font size, spacing and margins
+- Local ATS analyzer with structure checks and job-description keyword matching
+- ResuMate AI Assistant with offline writing suggestions; it does not falsely claim a cloud AI provider is running
+- Cover Letter workspace with save, copy and writing assistance
+- JSON backup and validated import
+- Print / Save as PDF using the platform print flow
+- Device sharing through the Web Share API when supported
+- Offline-first core editing, preview, ATS and backup
 
-1. Push this repo to GitHub.
-2. Go to the **Actions** tab → the "Build ResuMate APK" workflow runs
-   automatically on every push to `main` (or run it manually via
-   "Run workflow").
-3. When it finishes, open the run → **Artifacts** → download
-   `resumate-debug-apk`. Unzip it — that's your installable `app-debug.apk`.
+## Architecture
 
-This is the most reliable path since GitHub's hosted runners already have
-Gradle/Android SDK network access built in.
-
-## Option B — GitHub Codespaces (interactive, what you asked for)
-
-1. On the repo page: **Code → Codespaces → Create codespace on main**.
-2. Wait for the container to finish building — it automatically runs
-   `.devcontainer/setup-android-sdk.sh`, which installs a minimal Android
-   SDK (platform 34 + build-tools) and `npm install`s the Capacitor deps.
-   This takes a few minutes the first time; watch the "Setting up
-   codespace" log in the terminal.
-3. Once it's done, open a **new terminal** (so the SDK env vars from
-   `~/.bashrc` are loaded) and run:
-   ```bash
-   cd android
-   ./gradlew assembleDebug
-   ```
-4. The APK lands at:
-   ```
-   android/app/build/outputs/apk/debug/app-debug.apk
-   ```
-5. In the Codespace file explorer, right-click that file → **Download**.
-
-If step 2's download URL for the command-line tools ever 404s (Google
-occasionally rotates the version number), grab the current one from
-https://developer.android.com/studio#command-tools and swap it into
-`.devcontainer/setup-android-sdk.sh`, then re-run that script.
-
-## Installing the APK on your phone
-
-`app-debug.apk` is unsigned-for-release but perfectly installable for
-personal use:
-1. Copy it to your phone (email, Drive, USB, etc.)
-2. Tap it → Android will ask to allow "install from this source" once.
-3. Install.
-
-## Making a real Play Store release build
-
-The workflow also builds `app-release-unsigned.apk`. Before this can go on
-the Play Store (or be installed as a "real" release build), it needs to be
-signed with your own keystore:
-```bash
-keytool -genkey -v -keystore resumate.keystore -alias resumate -keyalg RSA -keysize 2048 -validity 10000
-jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore resumate.keystore app-release-unsigned.apk resumate
-zipalign -v 4 app-release-unsigned.apk ResuMate-release.apk
+```text
+www/index.html   UI + responsive design system
+www/app.js       application state, data model, renderer and feature logic
+capacitor.config.json
+android/         native Capacitor Android project
+.github/workflows/build-apk.yml
 ```
-Keep `resumate.keystore` somewhere safe and **never commit it to GitHub** —
-losing it means you can never publish an update to the same app listing again.
 
-## Updating the app later
+The web application has no runtime CDN dependency. Core functionality is implemented locally so editing, preview and ATS analysis do not require internet access.
 
-Whenever you get a new version of the HTML file from Claude:
+## Android configuration
+
+- App ID: `com.krapal.resumate`
+- App name: `ResuMate`
+- Web directory: `www`
+- minSdk: 24
+- compileSdk: 36
+- targetSdk: 36
+- Android Gradle Plugin: 8.13.0
+- Gradle wrapper: 8.14.3
+- CI Java: 21
+- Node: 22
+
+## Development
+
 ```bash
-cp new-file.html www/index.html
+npm install
+npm run build
 npx cap sync android
 ```
-then rebuild via either option above.
 
-## What's in here
-- `www/index.html` — the ResuMate app (today's build, with the free
-  Groq/OpenRouter AI backend and onboarding screen)
-- `capacitor.config.json` — app ID `com.krapal.resumate`, app name "ResuMate"
-- `android/` — full native Android Studio/Gradle project (generated by
-  `npx cap add android`), including the Gradle wrapper
-- `.github/workflows/build-apk.yml` — CI build → downloadable APK artifact
-- `.devcontainer/` — makes `./gradlew assembleDebug` work directly in a
-  fresh Codespace terminal
+Debug build:
+
+```bash
+cd android
+./gradlew clean assembleDebug
+```
+
+Unit tests:
+
+```bash
+cd android
+./gradlew test
+```
+
+## APK location
+
+After a successful debug build:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+GitHub Actions publishes the same file as the `resumate-debug-apk` artifact.
+
+## GitHub Actions
+
+`.github/workflows/build-apk.yml` runs on pushes to `main` and `resumate-complete-rebuild`, or manually from Actions. It installs Android SDK 36, runs unit tests, performs a clean debug build and uploads the APK artifact.
+
+## Export / PDF note
+
+The app uses the browser/WebView print flow for PDF creation rather than a remote PDF service. On Android, choose **Save as PDF** from the system print UI when available. This keeps the core export path independent of a CDN or cloud API.
+
+## Privacy and AI
+
+Resume data is stored locally by default. The bundled ResuMate AI Assistant is explicitly an offline writing-aid layer. No provider API key is embedded in the frontend or APK. A future cloud AI integration should use a secure backend rather than exposing secrets in JavaScript.
+
+## Copyright safety
+
+ResuMate uses original UI, copy and template structures. It does not include proprietary source code, branding, logos or pixel-for-pixel copies of another resume-builder product.
